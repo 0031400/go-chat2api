@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
@@ -110,6 +111,8 @@ var modelProxy = map[string]string{
 	"o3-mini":              "o3-mini-2025-01-31",
 	"o3-mini-high":         "o3-mini-high-2025-01-31",
 }
+
+const moderationMessage = "I'm sorry, I cannot provide or engage in any content related to pornography, violence, or any unethical material. If you have any other questions or need assistance, please feel free to let me know. I'll do my best to provide support and assistance."
 
 func main() {
 	mrand.Seed(time.Now().UnixNano())
@@ -305,15 +308,26 @@ func (s *Server) proxyConversation(ctx context.Context, reqID, accessToken, requ
 	}
 
 	if stream {
+		decoded, derr := decodeResponseStream(resp)
+		if derr != nil {
+			writeError(w, http.StatusBadGateway, "decode_stream_failed")
+			return derr
+		}
+		defer decoded.Close()
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 		w.WriteHeader(http.StatusOK)
-		_, err = io.Copy(w, resp.Body)
-		return err
+		return streamAsOpenAIChunks(decoded, w, respModel)
 	}
 
-	content, err := readAssistantText(resp.Body)
+	decoded, derr := decodeResponseStream(resp)
+	if derr != nil {
+		writeError(w, http.StatusBadGateway, "decode_stream_failed")
+		return derr
+	}
+	defer decoded.Close()
+	content, err := readAssistantText(decoded)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "parse_sse_failed")
 		return err
@@ -437,17 +451,15 @@ func convertSingleMessage(msg InputMessage) (map[string]interface{}, error) {
 }
 
 func readAssistantText(r io.Reader) (string, error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return "", err
-	}
-	events := strings.Split(string(data), "\n\n")
-	for i := len(events) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(events[i])
-		if line == "" || !strings.HasPrefix(line, "data:") {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	lastText := ""
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || !strings.HasPrefix(line, "data: ") {
 			continue
 		}
-		payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		payload := strings.TrimSpace(strings.TrimPrefix(line, "data: "))
 		if payload == "[DONE]" || payload == "" {
 			continue
 		}
@@ -456,16 +468,209 @@ func readAssistantText(r io.Reader) (string, error) {
 			continue
 		}
 		msg, _ := evt["message"].(map[string]interface{})
+		if msg == nil {
+			continue
+		}
+		author, _ := msg["author"].(map[string]interface{})
+		role, _ := author["role"].(string)
+		if role == "user" || role == "system" {
+			continue
+		}
+		msg, _ = evt["message"].(map[string]interface{})
 		content, _ := msg["content"].(map[string]interface{})
 		parts, _ := content["parts"].([]interface{})
 		if len(parts) == 0 {
 			continue
 		}
 		if text, ok := parts[0].(string); ok && text != "" {
-			return text, nil
+			lastText = text
 		}
 	}
-	return "", errors.New("assistant_text_not_found")
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	if lastText == "" {
+		return "", errors.New("assistant_text_not_found")
+	}
+	return lastText, nil
+}
+
+func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
+	chunkID := "chatcmpl-" + compactID()
+	created := time.Now().Unix()
+	firstChunk := map[string]interface{}{
+		"id":      chunkID,
+		"object":  "chat.completion.chunk",
+		"created": created,
+		"model":   model,
+		"choices": []map[string]interface{}{{
+			"index": 0,
+			"delta": map[string]interface{}{
+				"role":    "assistant",
+				"content": "",
+			},
+			"logprobs":      nil,
+			"finish_reason": nil,
+		}},
+	}
+	if err := writeSSEEvent(w, firstChunk); err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	lastText := ""
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		payload := strings.TrimSpace(strings.TrimPrefix(line, "data: "))
+		if payload == "" {
+			continue
+		}
+		if payload == "[DONE]" {
+			break
+		}
+		var evt map[string]interface{}
+		if err := json.Unmarshal([]byte(payload), &evt); err != nil {
+			continue
+		}
+
+		if t, _ := evt["type"].(string); t == "moderation" {
+			chunk := map[string]interface{}{
+				"id":      chunkID,
+				"object":  "chat.completion.chunk",
+				"created": created,
+				"model":   model,
+				"choices": []map[string]interface{}{{
+					"index": 0,
+					"delta": map[string]interface{}{
+						"content": moderationMessage,
+					},
+					"logprobs":      nil,
+					"finish_reason": "stop",
+				}},
+			}
+			if err := writeSSEEvent(w, chunk); err != nil {
+				return err
+			}
+			_, err := io.WriteString(w, "data: [DONE]\n\n")
+			return err
+		}
+
+		msg, _ := evt["message"].(map[string]interface{})
+		if msg == nil {
+			continue
+		}
+		author, _ := msg["author"].(map[string]interface{})
+		role, _ := author["role"].(string)
+		if role == "user" || role == "system" {
+			continue
+		}
+		status, _ := msg["status"].(string)
+		content, _ := msg["content"].(map[string]interface{})
+		outerType, _ := content["content_type"].(string)
+		if outerType != "text" {
+			continue
+		}
+		parts, _ := content["parts"].([]interface{})
+		if len(parts) == 0 {
+			continue
+		}
+		text, _ := parts[0].(string)
+		if text == "" && status == "in_progress" {
+			continue
+		}
+
+		newText := ""
+		if strings.HasPrefix(text, lastText) {
+			newText = text[len(lastText):]
+		} else {
+			newText = text
+		}
+		if newText != "" {
+			chunk := map[string]interface{}{
+				"id":      chunkID,
+				"object":  "chat.completion.chunk",
+				"created": created,
+				"model":   model,
+				"choices": []map[string]interface{}{{
+					"index": 0,
+					"delta": map[string]interface{}{
+						"content": newText,
+					},
+					"logprobs":      nil,
+					"finish_reason": nil,
+				}},
+			}
+			if err := writeSSEEvent(w, chunk); err != nil {
+				return err
+			}
+		}
+		if text != "" {
+			lastText = text
+		}
+
+		if status == "finished_successfully" {
+			endTurn, _ := msg["end_turn"].(bool)
+			if endTurn {
+				finalChunk := map[string]interface{}{
+					"id":      chunkID,
+					"object":  "chat.completion.chunk",
+					"created": created,
+					"model":   model,
+					"choices": []map[string]interface{}{{
+						"index":         0,
+						"delta":         map[string]interface{}{},
+						"logprobs":      nil,
+						"finish_reason": "stop",
+					}},
+				}
+				if err := writeSSEEvent(w, finalChunk); err != nil {
+					return err
+				}
+				_, err := io.WriteString(w, "data: [DONE]\n\n")
+				return err
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	_, err := io.WriteString(w, "data: [DONE]\n\n")
+	return err
+}
+
+func writeSSEEvent(w io.Writer, v interface{}) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(w, "data: "+string(b)+"\n\n")
+	return err
+}
+
+func decodeResponseStream(resp *http.Response) (io.ReadCloser, error) {
+	ce := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Encoding")))
+	switch ce {
+	case "", "identity":
+		return resp.Body, nil
+	case "gzip":
+		gr, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return gr, nil
+	case "deflate":
+		zr, err := zlib.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return zr, nil
+	default:
+		return nil, fmt.Errorf("unsupported content-encoding %q", ce)
+	}
 }
 
 func mapRequestModel(origin string) string {
