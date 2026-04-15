@@ -11,6 +11,7 @@ func readAssistantText(r io.Reader) (string, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	lastText := ""
+	activeMessageID := ""
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || !strings.HasPrefix(line, "data: ") {
@@ -31,6 +32,18 @@ func readAssistantText(r io.Reader) (string, error) {
 		author, _ := msg["author"].(map[string]interface{})
 		role, _ := author["role"].(string)
 		if role == "user" || role == "system" {
+			continue
+		}
+		messageID, _ := msg["id"].(string)
+		status, _ := msg["status"].(string)
+		endTurn, _ := msg["end_turn"].(bool)
+		if activeMessageID == "" && status == "in_progress" && messageID != "" {
+			activeMessageID = messageID
+		}
+		if activeMessageID == "" && status == "finished_successfully" && endTurn && messageID != "" {
+			activeMessageID = messageID
+		}
+		if activeMessageID != "" && messageID != "" && messageID != activeMessageID {
 			continue
 		}
 		content, _ := msg["content"].(map[string]interface{})
@@ -76,6 +89,7 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	lastText := ""
+	activeMessageID := ""
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || !strings.HasPrefix(line, "data: ") {
@@ -124,7 +138,18 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 		if role == "user" || role == "system" {
 			continue
 		}
+		messageID, _ := msg["id"].(string)
 		status, _ := msg["status"].(string)
+		endTurn, _ := msg["end_turn"].(bool)
+		if activeMessageID == "" && status == "in_progress" && messageID != "" {
+			activeMessageID = messageID
+		}
+		if activeMessageID == "" && status == "finished_successfully" && endTurn && messageID != "" {
+			activeMessageID = messageID
+		}
+		if activeMessageID != "" && messageID != "" && messageID != activeMessageID {
+			continue
+		}
 		content, _ := msg["content"].(map[string]interface{})
 		outerType, _ := content["content_type"].(string)
 		if outerType != "text" {
@@ -169,7 +194,6 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 		}
 
 		if status == "finished_successfully" {
-			endTurn, _ := msg["end_turn"].(bool)
 			if endTurn {
 				finalChunk := map[string]interface{}{
 					"id":      chunkID,
