@@ -100,7 +100,7 @@ func (s *Server) buildPowConfig(userAgent string) []interface{} {
 	}
 	documentKeys := []string{"location", "_reactListeningo743lnnpvdg"}
 	windowKeys := []string{"window", "document", "navigator", "location", "history"}
-	return []interface{}{
+	return []any{
 		chooseInt([]int{3000, 4000, 3120, 4160}),
 		parseTime,
 		4294705152,
