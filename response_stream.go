@@ -21,15 +21,15 @@ func readAssistantText(r io.Reader) (string, error) {
 		if payload == "[DONE]" || payload == "" {
 			continue
 		}
-		var evt map[string]interface{}
+		var evt map[string]any
 		if err := json.Unmarshal([]byte(payload), &evt); err != nil {
 			continue
 		}
-		msg, _ := evt["message"].(map[string]interface{})
+		msg, _ := evt["message"].(map[string]any)
 		if msg == nil {
 			continue
 		}
-		author, _ := msg["author"].(map[string]interface{})
+		author, _ := msg["author"].(map[string]any)
 		role, _ := author["role"].(string)
 		if role == "user" || role == "system" {
 			continue
@@ -46,8 +46,8 @@ func readAssistantText(r io.Reader) (string, error) {
 		if activeMessageID != "" && messageID != "" && messageID != activeMessageID {
 			continue
 		}
-		content, _ := msg["content"].(map[string]interface{})
-		parts, _ := content["parts"].([]interface{})
+		content, _ := msg["content"].(map[string]any)
+		parts, _ := content["parts"].([]any)
 		if len(parts) == 0 {
 			continue
 		}
@@ -67,14 +67,14 @@ func readAssistantText(r io.Reader) (string, error) {
 func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 	chunkID := "chatcmpl-" + compactID()
 	created := nowUnix()
-	firstChunk := map[string]interface{}{
+	firstChunk := map[string]any{
 		"id":      chunkID,
 		"object":  "chat.completion.chunk",
 		"created": created,
 		"model":   model,
-		"choices": []map[string]interface{}{{
+		"choices": []map[string]any{{
 			"index": 0,
-			"delta": map[string]interface{}{
+			"delta": map[string]any{
 				"role":    "assistant",
 				"content": "",
 			},
@@ -102,20 +102,20 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 		if payload == "[DONE]" {
 			break
 		}
-		var evt map[string]interface{}
+		var evt map[string]any
 		if err := json.Unmarshal([]byte(payload), &evt); err != nil {
 			continue
 		}
 
 		if t, _ := evt["type"].(string); t == "moderation" {
-			chunk := map[string]interface{}{
+			chunk := map[string]any{
 				"id":      chunkID,
 				"object":  "chat.completion.chunk",
 				"created": created,
 				"model":   model,
-				"choices": []map[string]interface{}{{
+				"choices": []map[string]any{{
 					"index": 0,
-					"delta": map[string]interface{}{
+					"delta": map[string]any{
 						"content": moderationMessage,
 					},
 					"logprobs":      nil,
@@ -129,11 +129,11 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 			return err
 		}
 
-		msg, _ := evt["message"].(map[string]interface{})
+		msg, _ := evt["message"].(map[string]any)
 		if msg == nil {
 			continue
 		}
-		author, _ := msg["author"].(map[string]interface{})
+		author, _ := msg["author"].(map[string]any)
 		role, _ := author["role"].(string)
 		if role == "user" || role == "system" {
 			continue
@@ -150,12 +150,12 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 		if activeMessageID != "" && messageID != "" && messageID != activeMessageID {
 			continue
 		}
-		content, _ := msg["content"].(map[string]interface{})
+		content, _ := msg["content"].(map[string]any)
 		outerType, _ := content["content_type"].(string)
 		if outerType != "text" {
 			continue
 		}
-		parts, _ := content["parts"].([]interface{})
+		parts, _ := content["parts"].([]any)
 		if len(parts) == 0 {
 			continue
 		}
@@ -171,14 +171,14 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 			newText = text
 		}
 		if newText != "" {
-			chunk := map[string]interface{}{
+			chunk := map[string]any{
 				"id":      chunkID,
 				"object":  "chat.completion.chunk",
 				"created": created,
 				"model":   model,
-				"choices": []map[string]interface{}{{
+				"choices": []map[string]any{{
 					"index": 0,
-					"delta": map[string]interface{}{
+					"delta": map[string]any{
 						"content": newText,
 					},
 					"logprobs":      nil,
@@ -195,14 +195,14 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 
 		if status == "finished_successfully" {
 			if endTurn {
-				finalChunk := map[string]interface{}{
+				finalChunk := map[string]any{
 					"id":      chunkID,
 					"object":  "chat.completion.chunk",
 					"created": created,
 					"model":   model,
-					"choices": []map[string]interface{}{{
+					"choices": []map[string]any{{
 						"index":         0,
-						"delta":         map[string]interface{}{},
+						"delta":         map[string]any{},
 						"logprobs":      nil,
 						"finish_reason": "stop",
 					}},
@@ -222,7 +222,7 @@ func streamAsOpenAIChunks(r io.Reader, w io.Writer, model string) error {
 	return err
 }
 
-func writeSSEEvent(w io.Writer, v interface{}) error {
+func writeSSEEvent(w io.Writer, v any) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -230,3 +230,4 @@ func writeSSEEvent(w io.Writer, v interface{}) error {
 	_, err = io.WriteString(w, "data: "+string(b)+"\n\n")
 	return err
 }
+

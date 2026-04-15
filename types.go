@@ -33,7 +33,7 @@ type ChatCompletionRequest struct {
 
 type InputMessage struct {
 	Role    string      `json:"role"`
-	Content interface{} `json:"content"`
+	Content any `json:"content"`
 }
 
 type RequirementsResponse struct {
@@ -56,24 +56,24 @@ type RequirementsResponse struct {
 
 type ChatGPTConversationRequest struct {
 	Action                     string                   `json:"action"`
-	ConversationMode           map[string]interface{}   `json:"conversation_mode"`
+	ConversationMode           map[string]any   `json:"conversation_mode"`
 	ForceParagen               bool                     `json:"force_paragen"`
 	ForceParagenModelSlug      string                   `json:"force_paragen_model_slug"`
 	ForceRateLimit             bool                     `json:"force_rate_limit"`
 	ForceUseSSE                bool                     `json:"force_use_sse"`
 	HistoryAndTrainingDisabled bool                     `json:"history_and_training_disabled"`
-	Messages                   []map[string]interface{} `json:"messages"`
+	Messages                   []map[string]any `json:"messages"`
 	Model                      string                   `json:"model"`
 	ParentMessageID            string                   `json:"parent_message_id"`
 	ResetRateLimits            bool                     `json:"reset_rate_limits"`
-	Suggestions                []interface{}            `json:"suggestions"`
-	SupportedEncodings         []interface{}            `json:"supported_encodings"`
-	SystemHints                []interface{}            `json:"system_hints"`
+	Suggestions                []any            `json:"suggestions"`
+	SupportedEncodings         []any            `json:"supported_encodings"`
+	SystemHints                []any            `json:"system_hints"`
 	Timezone                   string                   `json:"timezone"`
 	TimezoneOffsetMin          int                      `json:"timezone_offset_min"`
 	VariantPurpose             string                   `json:"variant_purpose"`
 	WebsocketRequestID         string                   `json:"websocket_request_id"`
-	ClientContextualInfo       map[string]interface{}   `json:"client_contextual_info"`
+	ClientContextualInfo       map[string]any   `json:"client_contextual_info"`
 }
 
 var modelProxy = map[string]string{
@@ -94,3 +94,4 @@ var modelProxy = map[string]string{
 }
 
 const moderationMessage = "I'm sorry, I cannot provide or engage in any content related to pornography, violence, or any unethical material. If you have any other questions or need assistance, please feel free to let me know. I'll do my best to provide support and assistance."
+

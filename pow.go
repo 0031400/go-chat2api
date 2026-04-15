@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha3"
+	"golang.org/x/crypto/sha3"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -83,7 +83,7 @@ func parseDPLFromHTML(html string) (string, string) {
 	return script, build
 }
 
-func (s *Server) buildPowConfig(userAgent string) []interface{} {
+func (s *Server) buildPowConfig(userAgent string) []any {
 	s.dplMu.Lock()
 	script := s.cachedDPLScript
 	build := s.cachedDPLBuild
@@ -129,12 +129,12 @@ func (s *Server) buildRequirementsToken(userAgent string) string {
 	return "gAAAAAC" + answer
 }
 
-func getAnswerToken(seed, diff string, config []interface{}) (string, bool) {
+func getAnswerToken(seed, diff string, config []any) (string, bool) {
 	answer, solved := generateAnswer(seed, diff, config)
 	return "gAAAAAB" + answer, solved
 }
 
-func generateAnswer(seed, diff string, config []interface{}) (string, bool) {
+func generateAnswer(seed, diff string, config []any) (string, bool) {
 	targetDiff, err := hex.DecodeString(diff)
 	if err != nil {
 		return "", false
@@ -145,8 +145,8 @@ func generateAnswer(seed, diff string, config []interface{}) (string, bool) {
 		return "", false
 	}
 	maxIter := 500000
-	for i := 0; i < maxIter; i++ {
-		payload := make([]interface{}, len(config))
+	for i := range maxIter {
+		payload := make([]any, len(config))
 		copy(payload, config)
 		payload[3] = i
 		payload[9] = i >> 1
@@ -158,8 +158,9 @@ func generateAnswer(seed, diff string, config []interface{}) (string, bool) {
 		input := make([]byte, 0, len(seedBytes)+len(enc))
 		input = append(input, seedBytes...)
 		input = append(input, enc...)
-		h := sha3.Sum512(input)
-		candidate := h[:]
+		hasher := sha3.New512()
+		_, _ = hasher.Write(input)
+		candidate := hasher.Sum(nil)
 		if diffLen < len(candidate) {
 			candidate = candidate[:diffLen]
 		}
@@ -170,3 +171,5 @@ func generateAnswer(seed, diff string, config []interface{}) (string, bool) {
 	fallback := "wQ8Lk5FbGpA2NcR9dShT6gYjU7VxZ4D" + base64.StdEncoding.EncodeToString([]byte(`"`+seed+`"`))
 	return fallback, false
 }
+
+

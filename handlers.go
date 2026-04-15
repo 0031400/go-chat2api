@@ -66,7 +66,7 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 
 	payload := ChatGPTConversationRequest{
 		Action:                     "next",
-		ConversationMode:           map[string]interface{}{"kind": "primary_assistant"},
+		ConversationMode:           map[string]any{"kind": "primary_assistant"},
 		ForceParagen:               false,
 		ForceParagenModelSlug:      "",
 		ForceRateLimit:             false,
@@ -76,14 +76,14 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		Model:                      reqModel,
 		ParentMessageID:            newUUID(),
 		ResetRateLimits:            false,
-		Suggestions:                []interface{}{},
-		SupportedEncodings:         []interface{}{},
-		SystemHints:                []interface{}{},
+		Suggestions:                []any{},
+		SupportedEncodings:         []any{},
+		SystemHints:                []any{},
 		Timezone:                   "America/Los_Angeles",
 		TimezoneOffsetMin:          -480,
 		VariantPurpose:             "comparison_implicit",
 		WebsocketRequestID:         newUUID(),
-		ClientContextualInfo: map[string]interface{}{
+		ClientContextualInfo: map[string]any{
 			"is_dark_mode":      false,
 			"time_since_loaded": 100,
 			"page_height":       900,
@@ -125,8 +125,8 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) convertMessages(_ context.Context, input []InputMessage) ([]map[string]interface{}, error) {
-	out := make([]map[string]interface{}, 0, len(input))
+func (s *Server) convertMessages(_ context.Context, input []InputMessage) ([]map[string]any, error) {
+	out := make([]map[string]any, 0, len(input))
 	for _, msg := range input {
 		chatMsg, err := convertSingleMessage(msg)
 		if err != nil {
@@ -137,22 +137,22 @@ func (s *Server) convertMessages(_ context.Context, input []InputMessage) ([]map
 	return out, nil
 }
 
-func convertSingleMessage(msg InputMessage) (map[string]interface{}, error) {
+func convertSingleMessage(msg InputMessage) (map[string]any, error) {
 	switch content := msg.Content.(type) {
 	case string:
-		return map[string]interface{}{
+		return map[string]any{
 			"id":     newUUID(),
-			"author": map[string]interface{}{"role": msg.Role},
-			"content": map[string]interface{}{
+			"author": map[string]any{"role": msg.Role},
+			"content": map[string]any{
 				"content_type": "text",
-				"parts":        []interface{}{content},
+				"parts":        []any{content},
 			},
-			"metadata": map[string]interface{}{},
+			"metadata": map[string]any{},
 		}, nil
-	case []interface{}:
-		parts := make([]interface{}, 0, len(content))
+	case []any:
+		parts := make([]any, 0, len(content))
 		for _, item := range content {
-			obj, ok := item.(map[string]interface{})
+			obj, ok := item.(map[string]any)
 			if !ok {
 				return nil, errInvalidMessageContentItem
 			}
@@ -167,16 +167,17 @@ func convertSingleMessage(msg InputMessage) (map[string]interface{}, error) {
 				return nil, fmt.Errorf("unsupported_content_type_%s", kind)
 			}
 		}
-		return map[string]interface{}{
+		return map[string]any{
 			"id":     newUUID(),
-			"author": map[string]interface{}{"role": msg.Role},
-			"content": map[string]interface{}{
+			"author": map[string]any{"role": msg.Role},
+			"content": map[string]any{
 				"content_type": "multimodal_text",
 				"parts":        parts,
 			},
-			"metadata": map[string]interface{}{},
+			"metadata": map[string]any{},
 		}, nil
 	default:
 		return nil, errUnsupportedMessageContent
 	}
 }
+

@@ -194,15 +194,15 @@ func bearerToken(header string) (string, error) {
 	return strings.TrimSpace(parts[1]), nil
 }
 
-func writeJSON(w http.ResponseWriter, status int, v interface{}) {
+func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
 
 func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]interface{}{
-		"error": map[string]interface{}{
+	writeJSON(w, status, map[string]any{
+		"error": map[string]any{
 			"message": message,
 			"type":    "invalid_request_error",
 		},
@@ -273,3 +273,4 @@ func defaultUserAgent() string {
 func nowUnix() int64 {
 	return time.Now().Unix()
 }
+

@@ -83,14 +83,14 @@ func (s *Server) proxyConversation(ctx context.Context, reqID, accessToken, requ
 		return err
 	}
 
-	completion := map[string]interface{}{
+	completion := map[string]any{
 		"id":      "chatcmpl-" + compactID(),
 		"object":  "chat.completion",
 		"created": time.Now().Unix(),
 		"model":   respModel,
-		"choices": []map[string]interface{}{{
+		"choices": []map[string]any{{
 			"index": 0,
-			"message": map[string]interface{}{
+			"message": map[string]any{
 				"role":    "assistant",
 				"content": content,
 			},
@@ -143,3 +143,4 @@ func (s *Server) fetchChatRequirements(ctx context.Context, reqID, accessToken, 
 	}
 	return &out, out.Token, nil
 }
+
