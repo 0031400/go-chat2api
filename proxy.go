@@ -16,8 +16,6 @@ func (s *Server) proxyConversation(ctx context.Context, reqID, accessToken, requ
 		writeError(w, http.StatusInternalServerError, "marshal_request_failed")
 		return err
 	}
-	log.Printf("[%s] conversation request bytes=%d requirements_token_present=%v", reqID, len(body), requirementsToken != "")
-	log.Printf("[%s] conversation request model=%q stream=%v", reqID, payload.Model, stream)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.BaseURL+"/backend-api/conversation", bytes.NewReader(body))
 	if err != nil {
@@ -32,7 +30,6 @@ func (s *Server) proxyConversation(ctx context.Context, reqID, accessToken, requ
 	if proofToken != "" {
 		req.Header.Set("openai-sentinel-proof-token", proofToken)
 	}
-	log.Printf("[%s] conversation request headers: %s", reqID, headerSnapshot(req.Header))
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -116,17 +113,15 @@ func (s *Server) fetchChatRequirements(ctx context.Context, reqID, accessToken, 
 	}
 	setBaseHeaders(req.Header, accessToken, deviceID, userAgent, s.cfg.OAILanguage)
 	req.Header.Set("Accept", "*/*")
-	log.Printf("[%s] chat-requirements request headers: %s", reqID, headerSnapshot(req.Header))
-	log.Printf("[%s] chat-requirements request p_token_prefix=%q", reqID, clipToken(pToken, 16))
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, "", err
 	}
 	defer resp.Body.Close()
 	data, readErr := readPossiblyCompressedBody(resp)
-	log.Printf("[%s] chat-requirements status=%d ct=%q ce=%q read_err=%v", reqID, resp.StatusCode, resp.Header.Get("Content-Type"), resp.Header.Get("Content-Encoding"), readErr)
-	log.Printf("[%s] chat-requirements response headers: %s", reqID, headerSnapshot(resp.Header))
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[%s] chat-requirements status=%d ct=%q ce=%q read_err=%v", reqID, resp.StatusCode, resp.Header.Get("Content-Type"), resp.Header.Get("Content-Encoding"), readErr)
+		log.Printf("[%s] chat-requirements response headers: %s", reqID, headerSnapshot(resp.Header))
 		return nil, "", fmt.Errorf("status %d: %s", resp.StatusCode, previewBytes(data))
 	}
 	var out RequirementsResponse
@@ -135,9 +130,6 @@ func (s *Server) fetchChatRequirements(ctx context.Context, reqID, accessToken, 
 		log.Printf("[%s] chat-requirements raw preview: %s", reqID, previewBytes(data))
 		return nil, "", err
 	}
-	log.Printf("[%s] chat-requirements persona=%q token_present=%v turnstile=%v arkose=%v pow=%v",
-		reqID, out.Persona, out.Token != "", out.Turnstile.Required, out.Arkose.Required, out.ProofOfWork.Required)
-	log.Printf("[%s] chat-requirements pow_seed_prefix=%q pow_diff=%q", reqID, clipToken(out.ProofOfWork.Seed, 20), out.ProofOfWork.Difficulty)
 	if out.Token == "" {
 		return &out, "", errEmptyRequirementsToken
 	}

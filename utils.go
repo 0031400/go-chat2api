@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	mrand "math/rand"
 	"net/http"
 	"os"
@@ -208,14 +207,6 @@ func writeError(w http.ResponseWriter, status int, message string) {
 			"message": message,
 			"type":    "invalid_request_error",
 		},
-	})
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		log.Printf("%s %s %s", r.Method, r.URL.Path, time.Since(start))
 	})
 }
 

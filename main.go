@@ -30,7 +30,7 @@ func main() {
 	mux.HandleFunc("/v1/chat/completions", srv.handleChatCompletions)
 
 	log.Printf("listening on %s", cfg.ListenAddr)
-	if err := http.ListenAndServe(cfg.ListenAddr, loggingMiddleware(mux)); err != nil {
+	if err := http.ListenAndServe(cfg.ListenAddr, mux); err != nil {
 		log.Fatalf("server exited: %v", err)
 	}
 }

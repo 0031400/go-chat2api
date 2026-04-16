@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	mrand "math/rand"
 	"net/http"
 	"regexp"
@@ -16,7 +15,7 @@ import (
 	"time"
 )
 
-func (s *Server) ensureDPL(ctx context.Context, reqID, accessToken, deviceID, userAgent string) error {
+func (s *Server) ensureDPL(ctx context.Context, _ string, accessToken, deviceID, userAgent string) error {
 	s.dplMu.Lock()
 	if !s.cachedDPLTime.IsZero() && time.Since(s.cachedDPLTime) < 15*time.Minute && s.cachedDPLBuild != "" {
 		s.dplMu.Unlock()
@@ -51,7 +50,6 @@ func (s *Server) ensureDPL(ctx context.Context, reqID, accessToken, deviceID, us
 	s.cachedDPLBuild = build
 	s.cachedDPLTime = time.Now()
 	s.dplMu.Unlock()
-	log.Printf("[%s] dpl updated build=%q script=%q", reqID, build, script)
 	return nil
 }
 

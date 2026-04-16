@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func (s *Server) handleRoot(w http.ResponseWriter, _ *http.Request) {
@@ -18,6 +19,12 @@ func (s *Server) handleRoot(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	reqID := compactID()
+	startedAt := time.Now()
+	requestModel := ""
+	defer func() {
+		log.Printf("[%s] model=%q started_at=%s duration=%s", reqID, requestModel, startedAt.Format(time.RFC3339), time.Since(startedAt))
+	}()
+
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
@@ -38,11 +45,11 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "messages_required")
 		return
 	}
+	requestModel = req.Model
 
 	ctx := r.Context()
 	deviceID := newUUID()
 	userAgent := defaultUserAgent()
-	log.Printf("[%s] incoming model=%q stream=%v messages=%d", reqID, req.Model, req.Stream, len(req.Messages))
 	respModel := modelProxy[req.Model]
 	if respModel == "" {
 		respModel = req.Model
@@ -51,8 +58,6 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	reqModel := mapRequestModel(req.Model)
-	log.Printf("[%s] model mapping: origin=%q req_model=%q resp_model=%q", reqID, req.Model, reqModel, respModel)
-	log.Printf("[%s] fp user_agent=%q oai_device_id=%q", reqID, userAgent, deviceID)
 
 	chatMessages, err := s.convertMessages(ctx, req.Messages)
 	if err != nil {
@@ -101,12 +106,9 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 
 	proofToken := ""
 	if reqResp != nil && reqResp.ProofOfWork.Required {
-		if strings.Compare(reqResp.ProofOfWork.Difficulty, s.cfg.PowDifficulty) <= 0 {
-			log.Printf("[%s] proof difficulty too high diff=%q threshold=%q", reqID, reqResp.ProofOfWork.Difficulty, s.cfg.PowDifficulty)
-		} else {
+		if strings.Compare(reqResp.ProofOfWork.Difficulty, s.cfg.PowDifficulty) > 0 {
 			config := s.buildPowConfig(userAgent)
 			tk, solved := getAnswerToken(reqResp.ProofOfWork.Seed, reqResp.ProofOfWork.Difficulty, config)
-			log.Printf("[%s] proof solved=%v token_present=%v", reqID, solved, tk != "")
 			if solved {
 				proofToken = tk
 			}
