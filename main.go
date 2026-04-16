@@ -1,22 +1,22 @@
 package main
 
 import (
+	"flag"
 	"log"
 	mrand "math/rand"
 	"net/http"
 	"net/http/cookiejar"
-	"strings"
 	"time"
 )
 
 func main() {
+	configPath := flag.String("c", "config.json", "path to config json file")
+	flag.Parse()
+
 	mrand.Seed(time.Now().UnixNano())
-	cfg := Config{
-		ListenAddr:    getEnv("LISTEN_ADDR", ":8080"),
-		BaseURL:       strings.TrimRight(getEnv("CHATGPT_BASE_URL", "https://chatgpt.com"), "/"),
-		Timeout:       90 * time.Second,
-		PowDifficulty: getEnv("POW_DIFFICULTY", "000032"),
-		OAILanguage:   getEnv("OAI_LANGUAGE", "zh-CN"),
+	cfg, err := loadConfig(*configPath)
+	if err != nil {
+		log.Fatalf("load %s failed: %v", *configPath, err)
 	}
 	jar, _ := cookiejar.New(nil)
 
@@ -38,4 +38,3 @@ func main() {
 		log.Fatalf("server exited: %v", err)
 	}
 }
-

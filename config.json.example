@@ -1,0 +1,7 @@
+{
+  "listen_addr": "127.0.0.1:8080",
+  "base_url": "https://chatgpt.com",
+  "timeout_secs": 90,
+  "pow_difficulty": "000032",
+  "oai_language": "zh-CN"
+}

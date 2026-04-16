@@ -65,6 +65,8 @@ func mapRequestModel(origin string) string {
 		return "gpt-4"
 	case strings.Contains(origin, "gpt-3.5"):
 		return "text-davinci-002-render-sha"
+	case strings.Contains(origin, "gpt-5.2"):
+		return "gpt-5.2"
 	case strings.Contains(origin, "auto"):
 		return "auto"
 	default:
@@ -273,4 +275,3 @@ func defaultUserAgent() string {
 func nowUnix() int64 {
 	return time.Now().Unix()
 }
-

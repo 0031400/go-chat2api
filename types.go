@@ -32,13 +32,13 @@ type ChatCompletionRequest struct {
 }
 
 type InputMessage struct {
-	Role    string      `json:"role"`
-	Content any `json:"content"`
+	Role    string `json:"role"`
+	Content any    `json:"content"`
 }
 
 type RequirementsResponse struct {
-	Token   string `json:"token"`
-	Persona string `json:"persona"`
+	Token     string `json:"token"`
+	Persona   string `json:"persona"`
 	Turnstile struct {
 		Required bool   `json:"required"`
 		Dx       string `json:"dx"`
@@ -55,24 +55,24 @@ type RequirementsResponse struct {
 }
 
 type ChatGPTConversationRequest struct {
-	Action                     string                   `json:"action"`
+	Action                     string           `json:"action"`
 	ConversationMode           map[string]any   `json:"conversation_mode"`
-	ForceParagen               bool                     `json:"force_paragen"`
-	ForceParagenModelSlug      string                   `json:"force_paragen_model_slug"`
-	ForceRateLimit             bool                     `json:"force_rate_limit"`
-	ForceUseSSE                bool                     `json:"force_use_sse"`
-	HistoryAndTrainingDisabled bool                     `json:"history_and_training_disabled"`
+	ForceParagen               bool             `json:"force_paragen"`
+	ForceParagenModelSlug      string           `json:"force_paragen_model_slug"`
+	ForceRateLimit             bool             `json:"force_rate_limit"`
+	ForceUseSSE                bool             `json:"force_use_sse"`
+	HistoryAndTrainingDisabled bool             `json:"history_and_training_disabled"`
 	Messages                   []map[string]any `json:"messages"`
-	Model                      string                   `json:"model"`
-	ParentMessageID            string                   `json:"parent_message_id"`
-	ResetRateLimits            bool                     `json:"reset_rate_limits"`
+	Model                      string           `json:"model"`
+	ParentMessageID            string           `json:"parent_message_id"`
+	ResetRateLimits            bool             `json:"reset_rate_limits"`
 	Suggestions                []any            `json:"suggestions"`
 	SupportedEncodings         []any            `json:"supported_encodings"`
 	SystemHints                []any            `json:"system_hints"`
-	Timezone                   string                   `json:"timezone"`
-	TimezoneOffsetMin          int                      `json:"timezone_offset_min"`
-	VariantPurpose             string                   `json:"variant_purpose"`
-	WebsocketRequestID         string                   `json:"websocket_request_id"`
+	Timezone                   string           `json:"timezone"`
+	TimezoneOffsetMin          int              `json:"timezone_offset_min"`
+	VariantPurpose             string           `json:"variant_purpose"`
+	WebsocketRequestID         string           `json:"websocket_request_id"`
 	ClientContextualInfo       map[string]any   `json:"client_contextual_info"`
 }
 
@@ -80,6 +80,7 @@ var modelProxy = map[string]string{
 	"gpt-3.5-turbo":        "gpt-3.5-turbo-0125",
 	"gpt-3.5-turbo-16k":    "gpt-3.5-turbo-16k-0613",
 	"gpt-4":                "gpt-4-0613",
+	"gpt-5.2":              "gpt-5.2-2025-12-11",
 	"gpt-4-32k":            "gpt-4-32k-0613",
 	"gpt-4-turbo-preview":  "gpt-4-0125-preview",
 	"gpt-4-vision-preview": "gpt-4-1106-vision-preview",
@@ -94,4 +95,3 @@ var modelProxy = map[string]string{
 }
 
 const moderationMessage = "I'm sorry, I cannot provide or engage in any content related to pornography, violence, or any unethical material. If you have any other questions or need assistance, please feel free to let me know. I'll do my best to provide support and assistance."
-
