@@ -27,7 +27,6 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", srv.handleRoot)
-	mux.HandleFunc("/healthz", srv.handleHealth)
 	mux.HandleFunc("/v1/chat/completions", srv.handleChatCompletions)
 
 	log.Printf("listening on %s", cfg.ListenAddr)

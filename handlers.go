@@ -16,10 +16,6 @@ func (s *Server) handleRoot(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
 func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	reqID := compactID()
 	if r.Method != http.MethodPost {
@@ -180,4 +176,3 @@ func convertSingleMessage(msg InputMessage) (map[string]any, error) {
 		return nil, errUnsupportedMessageContent
 	}
 }
-
