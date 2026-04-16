@@ -3,17 +3,14 @@ package main
 import (
 	"flag"
 	"log"
-	mrand "math/rand"
 	"net/http"
 	"net/http/cookiejar"
-	"time"
 )
 
 func main() {
 	configPath := flag.String("c", "config.json", "path to config json file")
 	flag.Parse()
 
-	mrand.Seed(time.Now().UnixNano())
 	cfg, err := loadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("load %s failed: %v", *configPath, err)
